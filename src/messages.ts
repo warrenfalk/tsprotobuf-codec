@@ -225,7 +225,13 @@ function getVtable<TStrict>(msg: MessageImpl<TStrict> | TStrict | undefined): VT
     //       and so we satisfy the requirement when decoding that a message can be broken into muliple blocks within the wire format and these will be merged together
     //       but the resulting message value reader acts as though it can take any TStrict in prev() and it currently cannot because we have not implemented a way to go from strict back to vtable below
     //       if we implement that, then this will also be possible, but so far there's no actual use case
-    return (msg && "_vtable" in msg ? msg : undefined)
+    if (!msg)
+        return undefined;
+    if (!(typeof msg === "object"))
+        return undefined;
+    if (!("_vtable" in msg))
+        return undefined;
+    return msg as any as VTable;
 }
 
 type VTableReader = (r: Readable, template: VTable) => VTable

@@ -11,8 +11,10 @@ export type FieldType<TVal, TDef = TVal> = {
 
 export type Deferrable<T> = Exclude<T, Function> | (() => Exclude<T, Function>);
 
+const isFunction = (x: any): x is Function => typeof(x) === "function";
+
 export function realize<T>(deferrable: Deferrable<T>): T {
-    return "apply" in deferrable ? deferrable() : deferrable;
+    return isFunction(deferrable) ? deferrable() : deferrable;
 }
 
 export type RepeatableFieldType<TVal, TDef = TVal> = FieldType<TVal, TDef> & {
