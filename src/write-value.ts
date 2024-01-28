@@ -1,5 +1,6 @@
 import { Writable } from "./types";
 import { TWO_TO_32, TWO_TO_20, TWO_TO_52, FLOAT64_MAX, FLOAT64_MIN, FLOAT32_MAX, FLOAT32_MIN, TWO_TO_23 } from "./constants";
+import Long from "long";
 
 const utf8encode: (input: string) => Uint8Array = (() => { const encoder = new TextEncoder(); return encoder.encode.bind(encoder); })();
 
