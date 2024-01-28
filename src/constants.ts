@@ -1,0 +1,9 @@
+export const FLOAT32_MIN = 1.1754943508222875e-38;
+export const FLOAT32_MAX = 3.4028234663852886e+38;
+export const FLOAT64_MAX = 1.7976931348623157e+308;
+export const FLOAT64_MIN = 2.2250738585072014e-308;
+export const TWO_TO_20 = 1048576;
+export const TWO_TO_23 = 8388608;
+export const TWO_TO_32 = 4294967296;
+export const TWO_TO_52 = 4503599627370496;
+

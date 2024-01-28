@@ -1,0 +1,39 @@
+{
+  "name": "tsgrpc-protobuf-codec",
+  "version": "0.9.0",
+  "main": "dist/protobuf-codec-ts.js",
+  "types": "dist/protobuf-codec-ts.d.ts",
+  "files": [
+    "dist",
+    "!dist/.tsbuildinfo"
+  ],
+  "scripts": {
+    "prepublish": "tsc -b tsconfig.json",
+    "build": "tsc -b tsconfig.json",
+    "test:debug": "node --inspect-brk -r ../.pnp.js $(yarn bin jest) --runInBand",
+    "test": "jest --coverage"
+  },
+  "repository": "https://github.com/dmgtech/tsgrpc-protobuf-codec",
+  "author": "Warren Falk <warren@warrenfalk.com> (https://github.com/warrenfalk)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dmgtech/tsgrpc-protobuf-codec/issues"
+  },
+  "homepage": "https://github.com/dmgtech/tsgrpc-protobuf-codec#readme",
+  "devDependencies": {
+    "@types/jest": "^26.0.22",
+    "@types/jest-in-case": "^1.0.3",
+    "jest": "^26.6.3",
+    "jest-in-case": "^1.0.2",
+    "ts-jest": "^26.5.5",
+    "typescript": "^4.2.4"
+  },
+  "dependencies": {
+    "@js-joda/core": "^3.1.0",
+    "@types/long": "^4.0.1",
+    "assert-never": "^1.2.1",
+    "long": "^4.0.0",
+    "tslib": "^2.0.0"
+  },
+  "packageManager": "yarn@4.0.2"
+}

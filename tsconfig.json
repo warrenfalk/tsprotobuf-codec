@@ -1,0 +1,29 @@
+{
+    "compilerOptions": {
+        "strict": true,
+ 
+        "sourceMap": true,
+        "declarationMap": true,
+        "declaration": true,
+ 
+        "rootDir": "src",
+        "baseUrl": "/never",
+        "outDir": "dist",
+        "composite": true,
+        "incremental": true,
+        "tsBuildInfoFile": "dist/.tsbuildinfo",
+
+        "module": "CommonJS",
+        "moduleResolution": "Node",
+        "esModuleInterop": true,
+        "target": "ES5",
+        "downlevelIteration": true,
+        "importHelpers": true,
+        "lib": [
+            "ES6"
+        ]
+    },
+    "include": [
+        "src/**/*"
+    ]
+}
