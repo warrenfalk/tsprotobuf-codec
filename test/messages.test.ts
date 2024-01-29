@@ -113,12 +113,6 @@ describe('createMessage', () => {
         expect(value).toEqual(new Error("Invalid wire type for message: 0"));
     })
 
-    it('has a hidden but accessible _vtable', () => {
-        const r = fromHex(`6a09646f632062726f776e`);
-        const value = msgField.readValue(r);
-        expect((value as any)._vtable).toBeDefined();
-    })
-
     it('can be repeated', () => {
         const repeated = FieldTypes.repeated(msgField);
         // Note: this stream is missing the tags, we'll just simulate them

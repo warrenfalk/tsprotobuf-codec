@@ -99,7 +99,7 @@ export function message<TStrict>(getMessageDef: () => {readMessageValue: Message
     getMessageDef = once(getMessageDef);
     const readMessageValue: MessageValueReader<TStrict> = (r, prev) => getMessageDef().readMessageValue(r, prev);
     const read = makeMessageReader(readMessageValue);
-    const readValue: FieldValueReader<MessageImpl<TStrict>> = (r) => readMessageValue(r, undefined);
+    const readValue: FieldValueReader<TStrict> = (r) => readMessageValue(r, undefined);
     return {defVal, readMessageValue, readValue, read, wireType: WireType.LengthDelim};
 }
 
@@ -107,18 +107,11 @@ export function createMessage<TStrict>(fields: ReadonlyArray<MessageFieldDef>): 
     const defVal = messagesDef;
     const readMessageValue = makeMessageValueReader<TStrict>(fields);
     const read = makeMessageReader(readMessageValue);
-    const readValue: FieldValueReader<MessageImpl<TStrict>> = (r) => readMessageValue(r, undefined);
+    const readValue: FieldValueReader<TStrict> = (r) => readMessageValue(r, undefined);
     return {defVal, readMessageValue, readValue, read, wireType: WireType.LengthDelim}
 }
 
 export type MessageFieldDef = [number, string, Deferrable<FieldType<any> | OneofFieldType<any>>]
-
-interface VTable {
-    _vtable: readonly any[];
-    _unknown: readonly UnknownField[];
-}
-
-type UnknownField = readonly [number, Uint8Array];
 
 function getOrAdd<K,V>(map: Map<K, V>, key: K, add: () => V): V {
     const existing = map.get(key);
@@ -132,114 +125,34 @@ function getOrAdd<K,V>(map: Map<K, V>, key: K, add: () => V): V {
     }
 }
 
-export type MessageImpl<T> = T & VTable & {
-    new(vt: VTable): MessageImpl<T>
-}
-
-export type MessageValueReader<T> = (r: Readable, prev?: MessageImpl<T> | T) => MessageImpl<T>
+export type MessageValueReader<T> = (r: Readable, prev?: T) => T
 
 export function makeMessageValueReader<T>(fields: readonly MessageFieldDef[]): MessageValueReader<T> {
-    // the following code is run once per type of message and sets up a function that can be called for every instance of the message
-
-    // all fresh vtables are a clone of the template
-    // the template vtable is populated with the defaults for all fields
-    const MessageImpl = function(this: T & VTable, vt: VTable) {
-        Object.defineProperty(this, "_vtable", {value: vt._vtable, enumerable: false})
-        Object.defineProperty(this, "_unknown", {value: vt._unknown, enumerable: false})
-    } as any as MessageImpl<T>;
-    
+    // the following code is run once per type of message and sets up some maps and a template
     const create = once(() => {
-        const numberToVtableIndex: number[] = [];
         const numberToField: MessageFieldDef[] = []
-        const oneofToVtableIndex: Map<string, number> = new Map();
-
-        const vtableTemplate: any[] = [];
+        const oneofs = new Map<string, Set<number>>();
+        const template: any = {};
         for (const field of fields) {
             const [number, name, type] = field;
             numberToField[number] = field;
             const fieldType = realize(type);
             const {defVal} = fieldType;
             const def = defVal();
-            if ("oneof" in fieldType) {
-                const {oneof} = fieldType;
-                const vtableIndex = getOrAdd(oneofToVtableIndex, oneof, () => {
-                    const vtableIndex = vtableTemplate.length;
-                    vtableTemplate.push(def);
-                    return vtableIndex;
-                });
-                numberToVtableIndex[number] = vtableIndex;
-                Object.defineProperty(MessageImpl.prototype, name, {
-                    get: function() { 
-                        const ov: OneOfValue = this._vtable[vtableIndex];
-                        return ov?.populated === number ? ov.value : fieldType.oneofDefVal();
-                    },
-                    enumerable: true,
-                })
+            const oneof = "oneof" in fieldType ? fieldType.oneof : undefined;
+            if (oneof) {
+                const set = getOrAdd(oneofs, oneof, () => new Set());
+                set.add(number);
             }
             else {
-                const vtableIndex = vtableTemplate.length;
-                vtableTemplate.push(def);
-                numberToVtableIndex[number] = vtableIndex;
-                // the getter for each field is defined here
-                // each field value is retrieved from the vtable at the same index it is declared in the fields array
-                Object.defineProperty(MessageImpl.prototype, name, {
-                    get: function() { return this._vtable[vtableIndex]; },
-                    enumerable: true,
-                })
+                template[name] = def;
             }
         }
-
-        for (const oneof of oneofToVtableIndex) {
-            const [name, index] = oneof;
-            Object.defineProperty(MessageImpl.prototype, `${name}Case`, {
-                get: function() {
-                    return numberToField[this._vtable[index]?.populated]?.[1]
-                },
-                enumerable: false,
-            })
-        }
-
-        Object.defineProperty(MessageImpl.prototype, "toJSON", {enumerable: false, value: function() {
-            const obj: any = {};
-            for (const name in this)
-                obj[name] = this[name];
-            return obj;
-        }})
-
-        const template: VTable = {_vtable: vtableTemplate, _unknown: []};
-        const vtableReader = makeMessageVTableReader(numberToField, numberToVtableIndex);
-        return {template, vtableReader};
+        return {template, numberToField, oneofs};
     });
     return (r, prev) => {
-        const {template, vtableReader} = create();
-        const start = getVtable(prev) || template;
-        const vtable = vtableReader(r, start)
-        const instance = new MessageImpl(vtable);
-        return instance;
-    }
-}
-
-function getVtable<TStrict>(msg: MessageImpl<TStrict> | TStrict | undefined): VTable | undefined {
-    // TODO: right now, you cannot use a previous message's state as a starting point when reading unless it is a MessageImpl (with a vtable)
-    //       which they always will be when decoding from wire format
-    //       and so we satisfy the requirement when decoding that a message can be broken into muliple blocks within the wire format and these will be merged together
-    //       but the resulting message value reader acts as though it can take any TStrict in prev() and it currently cannot because we have not implemented a way to go from strict back to vtable below
-    //       if we implement that, then this will also be possible, but so far there's no actual use case
-    if (!msg)
-        return undefined;
-    if (!(typeof msg === "object"))
-        return undefined;
-    if (!("_vtable" in msg))
-        return undefined;
-    return msg as any as VTable;
-}
-
-type VTableReader = (r: Readable, template: VTable) => VTable
-
-function makeMessageVTableReader(numberToField: readonly MessageFieldDef[], numberToVtableIndex: readonly number[]): VTableReader {
-    return (r, template) => {
-        const vtable = template._vtable.slice();
-        const unknown = template._unknown.slice();
+        const {template, numberToField, oneofs} = create();
+        const m: any = {...template, ...prev};
         for (;;) {
             const t = R.tag(r);
             if (t === undefined)
@@ -248,20 +161,36 @@ function makeMessageVTableReader(numberToField: readonly MessageFieldDef[], numb
             const wtype = R.wireTypeFromTag(t);
             const field = numberToField[number];
             if (field === undefined) {
-                // this field isn't something we had in our proto, so just stash the raw bytes
-                unknown.push([number, R.skip(r, wtype)]);
+                const raw = R.skip(r, wtype);
+                // TODO: how to handle unknown
+                //unknown.push([number, raw]);
                 continue;
             }
             const type = realize(field[2]);
-            const index = numberToVtableIndex[number];
-            const result = type.read(r, wtype, number, () => vtable[index]);
-            if (result instanceof Error)
-                throw result;
-            vtable[index] = result;
+            const result = type.read(r, wtype, number, () => m[field[1]]);
+            if ("oneof" in type) {
+                const oneofResult = result as OneOfValue;
+                const {populated, value} = oneofResult;
+                const oneof = oneofs.get(type.oneof)!;
+                for (const option of oneof) {
+                    if (option === populated) {
+                        m[field[1]] = value;
+                    }
+                    else {
+                        const name = numberToField[option][1];
+                        delete m[name];
+                    }
+                }
+            }
+            else {
+                if (result instanceof Error)
+                    throw result;
+                m[field[1]] = result;
+    
+            }
         }
-        return {_vtable: vtable, _unknown: unknown}
+        return m;
     }
-
 }
 
 export function makeMessageReader<TStrict>(contentReader: MessageValueReader<TStrict>): FieldReader<TStrict, undefined> {

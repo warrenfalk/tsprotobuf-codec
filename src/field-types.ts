@@ -240,10 +240,6 @@ export type OneOfValue = {
 
 const oneofsDef = () => undefined;
 export function oneof<TVal, TDef = TVal>(name: string, fieldType: Deferrable<RepeatableFieldType<TVal, TDef>>): OneofFieldType<TDef> {
-    /* The implementation of the oneof is to share a single entry in the vtable among all fields defined with the same oneof name
-       and the entry stores the field number of the member that is actually populated, plus the value of that member
-       this is mostly handled by the "message" reader maker
-    */
     return {
         defVal: oneofsDef,
         oneof: name,
