@@ -7,7 +7,5 @@ export * as Reader from "./reader";
 export * as Helpers from "./helpers";
 export * as Types from "./types";
 export * as Customize from "./customize";
-export * as Reducers from "./reducers";
 export * as Messages from "./messages";
-export * as Services from "./services";
 export * as Enums from "./enums";
