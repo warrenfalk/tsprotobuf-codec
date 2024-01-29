@@ -1,4 +1,5 @@
 export * as WriteField from "./write-field";
+export * as WriteValue from "./write-value";
 export * as KeyConverters from "./key-converters";
 export * as ReadValue from "./read-value";
 export * as FieldTypes from "./field-types";
