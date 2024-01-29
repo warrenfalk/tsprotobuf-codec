@@ -131,7 +131,6 @@ export function makeMessageValueReader<T>(fields: readonly MessageFieldDef[]): M
     // the following code is run once per type of message and sets up some maps and a template
     const create = once(() => {
         const numberToField: MessageFieldDef[] = []
-        const oneofs = new Map<string, Set<number>>();
         const template: any = {};
         for (const field of fields) {
             const [number, name, type] = field;
@@ -140,18 +139,14 @@ export function makeMessageValueReader<T>(fields: readonly MessageFieldDef[]): M
             const {defVal} = fieldType;
             const def = defVal();
             const oneof = "oneof" in fieldType ? fieldType.oneof : undefined;
-            if (oneof) {
-                const set = getOrAdd(oneofs, oneof, () => new Set());
-                set.add(number);
-            }
-            else {
+            if (!oneof) {
                 template[name] = def;
             }
         }
-        return {template, numberToField, oneofs};
+        return {template, numberToField};
     });
     return (r, prev) => {
-        const {template, numberToField, oneofs} = create();
+        const {template, numberToField} = create();
         const m: any = {...template, ...prev};
         for (;;) {
             const t = R.tag(r);
@@ -170,17 +165,8 @@ export function makeMessageValueReader<T>(fields: readonly MessageFieldDef[]): M
             const result = type.read(r, wtype, number, () => m[field[1]]);
             if ("oneof" in type) {
                 const oneofResult = result as OneOfValue;
-                const {populated, value} = oneofResult;
-                const oneof = oneofs.get(type.oneof)!;
-                for (const option of oneof) {
-                    if (option === populated) {
-                        m[field[1]] = value;
-                    }
-                    else {
-                        const name = numberToField[option][1];
-                        delete m[name];
-                    }
-                }
+                const {value} = oneofResult;
+                m[type.oneof] = {type: field[1], [field[1]]: value};
             }
             else {
                 if (result instanceof Error)
