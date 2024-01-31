@@ -23,7 +23,7 @@ message MyMessage {
 Then you could write that with the following code (normally raw access like this would be through generated code)
 
 ```typescript
-  import {WriteField as write, allocateNestingWriter, arrayCollector} from "tsprotobuf-codec";
+  import {WriteField as write, Writer} from "tsprotobuf-codec";
 
   const myNumber = 42;
   const myNumber_field = 1;
@@ -32,14 +32,14 @@ Then you could write that with the following code (normally raw access like this
   const myString_field = 2;
 
   // Preallocate a buffer
-  const writer = allocateNestingWriter(1024);
+  const writer = Writer.allocateNestingWriter(1024);
 
   // Write the fields to the buffer
   write.int32(writer, myNumber, myNumber_field);
   write.string(writer, myString, myString_field);
 
   // and then get the resulting blob
-  const encoded = writer.finish(arrayCollector);
+  const encoded = writer.finish(Writer.arrayCollector);
 ```
 
 ## Building
